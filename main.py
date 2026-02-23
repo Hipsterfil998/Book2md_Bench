@@ -9,31 +9,31 @@ Orchestrates the full pipeline:
   5. Save aligned (image, markdown) pairs with metadata
 
 Usage:
-    python build_benchmark.py
+    python main.py
 
 Colab setup:
     !apt-get install -y pandoc poppler-utils wkhtmltopdf -q
-    !pip install requests pypandoc pdf2image Pillow weasyprint beautifulsoup4 -q
+    !pip install -r requirements.txt -q
 """
 
 import json
 from pathlib import Path
 
-from config import LANGUAGES, N_BOOKS, OUTPUT_DIR
-from gutenberg_client import GutenbergClient
-from epub_converter import EpubConverter
-from page_sampler import PageSampler
-from page_renderer import PageRenderer
+from book_mdBench.config import LANGUAGES, N_BOOKS, OUTPUT_DIR
+from book_mdBench.gutenberg_client import GutenbergClient
+from book_mdBench.epub_converter import EpubConverter
+from book_mdBench.page_sampler import PageSampler
+from book_mdBench.page_renderer import PageRenderer
 
 
 class BenchmarkBuilder:
     """Orchestrates the full benchmark dataset construction pipeline."""
 
     def __init__(self):
-        self.client   = GutenbergClient()
+        self.client    = GutenbergClient()
         self.converter = EpubConverter()
-        self.sampler  = PageSampler()
-        self.renderer = PageRenderer()
+        self.sampler   = PageSampler()
+        self.renderer  = PageRenderer()
 
     def process_book(self, book: dict, lang_dir: Path) -> dict | None:
         """Run the full pipeline for a single book."""

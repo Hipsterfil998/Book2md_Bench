@@ -38,10 +38,27 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python benchmark_builder.py
+python main.py
 ```
 
 Output will be saved to `./benchmark_data/`.
+
+## Project Structure
+
+```
+book_mdBench/
+├── book_mdBench/          # Python package (core logic)
+│   ├── __init__.py
+│   ├── config.py
+│   ├── gutenberg_client.py
+│   ├── epub_converter.py
+│   ├── page_sampler.py
+│   └── page_renderer.py
+│
+├── main.py                # Entry point
+├── requirements.txt
+└── README.md
+```
 
 ## Output Structure
 
