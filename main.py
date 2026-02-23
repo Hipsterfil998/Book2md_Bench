@@ -3,16 +3,16 @@ Benchmark dataset builder.
 
 Orchestrates the full pipeline:
   1. Search and download EPUBs from Project Gutenberg
-  2. Convert EPUB → markdown (ground truth) and PDF (model input)
-  3. Sample pages stratified across front/body/back
-  4. Render sampled PDF pages to JPEG images
+  2. Convert EPUB → Markdown
+  3. Split Markdown into chunks, sample stratified across front/body/back
+  4. Render each sampled chunk to JPEG (chunk.md → PDF → JPEG)
   5. Save aligned (image, markdown) pairs with metadata
 
 Usage:
     python main.py
 
 Colab setup:
-    !apt-get install -y pandoc poppler-utils wkhtmltopdf -q
+    !apt-get install -y pandoc poppler-utils -q
     !pip install -r requirements.txt -q
 """
 
@@ -45,14 +45,11 @@ class BenchmarkBuilder:
 
         epub_path = book_dir / "book.epub"
         md_path   = book_dir / "book.md"
-        pdf_path  = book_dir / "book.pdf"
 
-        # download and convert
+        # download and convert EPUB → Markdown
         if not self.client.download_epub(book["epub_url"], epub_path):
             return None
         if not self.converter.to_markdown(epub_path, md_path):
-            return None
-        if not self.converter.to_pdf(epub_path, pdf_path):
             return None
 
         # split and sample
@@ -64,8 +61,8 @@ class BenchmarkBuilder:
         sampled     = self.sampler.sample(len(chunks))
         all_indices = sorted(i for indices in sampled.values() for i in indices)
 
-        # render pages
-        rendered = self.renderer.render(pdf_path, all_indices, pages_dir)
+        # render each sampled chunk: md → pdf → jpg
+        rendered = self.renderer.render(chunks, all_indices, pages_dir)
 
         # save aligned (image, markdown) pairs
         page_records = []

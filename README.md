@@ -1,14 +1,14 @@
-# BookMDBench
+# Book2md_Bench
 
 A benchmark dataset builder for document understanding tasks.
-It downloads EPUB books from [Project Gutenberg](https://www.gutenberg.org/), converts them to Markdown (ground truth) and PDF (model input), samples pages across front/body/back sections, and renders them as JPEG images.
+It downloads EPUB books from [Project Gutenberg](https://www.gutenberg.org/), converts them to Markdown, samples chunks stratified across front/body/back sections, and renders each chunk as a JPEG image.
 
 ## Pipeline
 
 1. Search and download EPUBs from Project Gutenberg
-2. Convert EPUB → Markdown (ground truth) and PDF (model input)
-3. Sample pages stratified across front / body / back zones
-4. Render sampled PDF pages to JPEG images
+2. Convert EPUB → Markdown (full book)
+3. Split Markdown into chunks, sample stratified across front / body / back zones
+4. Render each sampled chunk to JPEG (`chunk.md → PDF → JPEG`)
 5. Save aligned `(image, markdown)` pairs with metadata
 
 ## Dataset Parameters
@@ -26,7 +26,7 @@ It downloads EPUB books from [Project Gutenberg](https://www.gutenberg.org/), co
 ### 1. System dependencies
 
 ```bash
-sudo apt-get install -y pandoc poppler-utils wkhtmltopdf
+sudo apt-get install -y pandoc poppler-utils
 ```
 
 ### 2. Python dependencies
@@ -70,7 +70,6 @@ benchmark_data/
 │   └── <book_id>/
 │       ├── book.epub
 │       ├── book.md
-│       ├── book.pdf
 │       └── pages/
 │           ├── page_0001.md
 │           └── page_0001.jpg

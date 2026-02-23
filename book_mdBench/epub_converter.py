@@ -2,13 +2,13 @@
 EPUB conversion utilities.
 """
 
-import subprocess
 from pathlib import Path
+
 import pypandoc
 
 
 class EpubConverter:
-    """Convert EPUB files to Markdown and PDF."""
+    """Convert EPUB files to Markdown."""
 
     def to_markdown(self, epub_path: Path, md_path: Path) -> bool:
         """Convert EPUB → Markdown via pandoc. Returns True on success."""
@@ -24,23 +24,4 @@ class EpubConverter:
             return True
         except Exception as e:
             print(f"    ✗ EPUB→MD failed: {e}")
-            return False
-
-    def to_pdf(self, epub_path: Path, pdf_path: Path) -> bool:
-        """Convert EPUB → PDF via pandoc + weasyprint. Returns True on success."""
-        if pdf_path.exists():
-            return True
-        try:
-            result = subprocess.run(
-                ["pandoc", str(epub_path), "-o", str(pdf_path), "--pdf-engine=weasyprint"],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-            if result.returncode != 0:
-                print(f"    ✗ EPUB→PDF failed: {result.stderr[:200]}")
-                return False
-            return True
-        except Exception as e:
-            print(f"    ✗ EPUB→PDF failed: {e}")
             return False
