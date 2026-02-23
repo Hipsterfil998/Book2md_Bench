@@ -27,12 +27,12 @@ class EpubConverter:
             return False
 
     def to_pdf(self, epub_path: Path, pdf_path: Path) -> bool:
-        """Convert EPUB → PDF via pandoc + wkhtmltopdf. Returns True on success."""
+        """Convert EPUB → PDF via pandoc + weasyprint. Returns True on success."""
         if pdf_path.exists():
             return True
         try:
             result = subprocess.run(
-                ["pandoc", str(epub_path), "-o", str(pdf_path), "--pdf-engine=wkhtmltopdf"],
+                ["pandoc", str(epub_path), "-o", str(pdf_path), "--pdf-engine=weasyprint"],
                 capture_output=True,
                 text=True,
                 timeout=120,
