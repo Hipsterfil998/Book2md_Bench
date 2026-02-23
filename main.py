@@ -19,7 +19,7 @@ Colab setup:
 import json
 from pathlib import Path
 
-from book_mdBench.config import LANGUAGES, N_BOOKS, OUTPUT_DIR
+from book_mdBench.config import LANGUAGES, N_BOOKS, N_PAGES, OUTPUT_DIR
 from book_mdBench.gutenberg_client import GutenbergClient
 from book_mdBench.epub_converter import EpubConverter
 from book_mdBench.page_sampler import PageSampler
@@ -36,7 +36,7 @@ class BenchmarkBuilder:
         self.renderer  = PageRenderer()
 
     def process_book(self, book: dict, lang_dir: Path) -> dict | None:
-        """Run the full pipeline for a single book."""
+        """Run the full pipeline for a single book. Returns None if < N_PAGES pages saved."""
         book_dir  = lang_dir / str(book["id"])
         pages_dir = book_dir / "pages"
         book_dir.mkdir(parents=True, exist_ok=True)
@@ -79,6 +79,10 @@ class BenchmarkBuilder:
                     "md_path":  str(chunk_path),
                 })
 
+        if len(page_records) < N_PAGES:
+            print(f"    ✗ Only {len(page_records)}/{N_PAGES} pages saved, skipping")
+            return None
+
         print(f"    ✓ {len(page_records)} pages saved")
         return {
             "id":      book["id"],
@@ -98,13 +102,27 @@ class BenchmarkBuilder:
             lang_dir = OUTPUT_DIR / language
             lang_dir.mkdir(exist_ok=True)
 
-            books   = self.client.sample(lang_code, N_BOOKS)
-            results = []
+            results      = []
+            seen_ids     = set()
+            page          = 1
 
-            for book in books:
-                result = self.process_book(book, lang_dir)
-                if result:
-                    results.append(result)
+            while len(results) < N_BOOKS:
+                candidates = self.client.sample(lang_code, N_BOOKS * 2, page=page)
+                candidates = [b for b in candidates if b["id"] not in seen_ids]
+
+                if not candidates:
+                    print(f"  ✗ No more books available for {language}")
+                    break
+
+                for book in candidates:
+                    if len(results) >= N_BOOKS:
+                        break
+                    seen_ids.add(book["id"])
+                    result = self.process_book(book, lang_dir)
+                    if result:
+                        results.append(result)
+
+                page += 1
 
             all_metadata[language] = results
             (lang_dir / "metadata.json").write_text(

@@ -23,9 +23,9 @@ class GutenbergClient:
         self._session.mount("https://", adapter)
         self._session.mount("http://", adapter)
 
-    def sample(self, lang_code: str, n: int) -> list[dict]:
-        """Return up to *n* books with EPUB downloads for the given language."""
-        books, page = [], 1
+    def sample(self, lang_code: str, n: int, page: int = 1) -> list[dict]:
+        """Return up to *n* books with EPUB downloads for the given language, starting from *page*."""
+        books = []
         while len(books) < n:
             resp = self._session.get(
                 GUTENDEX_URL,
