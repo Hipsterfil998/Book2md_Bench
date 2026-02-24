@@ -24,11 +24,11 @@ import re
 import shutil
 from pathlib import Path
 
-from book_mdBench.config import LANGUAGES, N_BOOKS, N_PAGES, OUTPUT_DIR
-from book_mdBench.gutenberg_client import GutenbergClient
-from book_mdBench.epub_converter import EpubConverter
-from book_mdBench.page_sampler import PageSampler
-from book_mdBench.page_renderer import PageRenderer
+from config import LANGUAGES, N_BOOKS, N_PAGES, OUTPUT_DIR
+from book2md.gutenberg_client import GutenbergClient
+from book2md.epub_converter import EpubConverter
+from book2md.page_sampler import PageSampler
+from book2md.page_renderer import PageRenderer
 
 
 class BenchmarkBuilder:

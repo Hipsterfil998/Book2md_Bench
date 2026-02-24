@@ -3,3 +3,5 @@ pypandoc
 pdf2image
 Pillow
 beautifulsoup4
+rapidfuzz
+sacrebleu

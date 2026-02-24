@@ -8,7 +8,7 @@ Split strategy per section:
 
 import random
 import re
-from book_mdBench.config import MIN_MD_CHARS, N_FRONT_MANDATORY, STRATA
+from config import MIN_MD_CHARS, N_FRONT_MANDATORY, STRATA
 
 _PAGE_MARKER = re.compile(r"(?=\[p\. \d+\])")
 _PAGE_CHARS  = 2800   # approx. chars per A4 page at 11pt / 2.5cm margins

@@ -10,7 +10,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from book_mdBench.config import GUTENDEX_URL
+from config import GUTENDEX_URL
 
 
 class GutenbergClient:

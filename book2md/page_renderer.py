@@ -19,7 +19,7 @@ from pathlib import Path
 from pdf2image import convert_from_path
 from pdf2image.exceptions import PDFPageCountError
 
-from book_mdBench.config import IMAGE_DPI, IMAGE_QUALITY
+from config import IMAGE_DPI, IMAGE_QUALITY
 
 
 class PageRenderer:

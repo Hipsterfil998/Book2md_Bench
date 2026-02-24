@@ -1,4 +1,8 @@
+<div align="center">
+
 # Book2md_Bench
+
+</div>
 
 A benchmark dataset builder for document understanding tasks.
 It downloads EPUB books from [Project Gutenberg](https://www.gutenberg.org/), converts each section to clean Markdown, splits it into page-sized chunks, and renders each chunk as a JPEG image via LaTeX.
