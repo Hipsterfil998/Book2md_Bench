@@ -5,7 +5,7 @@
 </div>
 
 A **multilingual** benchmark dataset builder for document understanding tasks.
-It downloads EPUB books from [Project Gutenberg](https://www.gutenberg.org/) and supports any language available in its catalogue — simply add the language code to `config.py`.
+It downloads EPUB books from [Project Gutenberg](https://www.gutenberg.org/) and supports any language available in its catalogue (Italian, German, English, French, Spanish, Portuguese, and more).
 Each section is converted to clean Markdown, split into page-sized chunks, and rendered as a JPEG image via LaTeX.
 
 ## Pipeline
