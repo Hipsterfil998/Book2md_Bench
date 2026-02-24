@@ -94,31 +94,37 @@ class EpubConverter:
 
     def _clean(self, text: str) -> str:
         """
-        Post-process pandoc Markdown output.
+        Post-process pandoc Markdown output to clean, standard Markdown.
 
-        Removes:
-          - YAML front matter, pandoc fenced divs, inline CSS attribute spans
-          - Empty anchor spans []{#id} (EPUB page anchors as noise)
-          - Excessive blank lines
+        Removes pandoc-specific extensions and EPUB navigation noise:
+          - YAML front matter, fenced divs  (::: … :::)
+          - Span elements        [text]{.class}    →  text
+          - Empty anchor spans   []{#id}           →  (removed)
+          - Internal links       [text](#anchor)   →  text
+          - Cross-file links     [text](path.xhtml)→  text  (preserves https://)
+          - Footnote ref links   ^[[N]](url)^      →  [^N]
+          - Bare number apice    ^N^               →  [^N]
+          - Line blocks          | text            →  text  (pandoc verse ext.)
+          - Leftover HTML tags
 
-        Preserves / normalises:
-          - Heading hierarchy: # ## ### (unchanged)
-          - Tables → Markdown pipe tables (via pandoc extension)
-          - Math → $...$ inline, $$...$$ block (via pandoc extension)
-          - Lists and indentation (unchanged)
-          - Images → ![image_N](images/image_N.png) numbered sequentially
-          - Page number markers → [p. N]
-          - Footnotes [^N] and their definitions
+        Preserves / converts to standard Markdown:
+          - Heading hierarchy (#, ##, ###), bold, italic, strikethrough ~~text~~
+          - Superscript non-numerico ^text^ (extended MD standard)
+          - Subscript ~text~ (extended MD standard)
+          - Pipe tables, math ($…$, $$…$$), code blocks, blockquotes
+          - Lists, hard line breaks (trailing \)
+          - Images → ![image_N](images/image_N.png)  (numbered sequentially)
+          - Page markers → [p. N]
+          - Footnote markers [^N] and definitions [^N]: …
         """
 
         # 1. YAML front matter
         text = re.sub(r"^---\n.*?\n---\n?", "", text, flags=re.DOTALL)
 
-        # 2. Pandoc fenced divs  (::: {#id .class} … :::)
+        # 2. Pandoc fenced divs  ::: {#id .class} … :::
         text = re.sub(r"^:{3,}[^\n]*$", "", text, flags=re.MULTILINE)
 
-        # 3. Heading links with attribute blocks
-        #    ### [TITLE](#ref){.toc-backref} {.center}  →  ### TITLE
+        # 3. Heading links  ### [TITLE](#ref){attrs}  →  ### TITLE
         text = re.sub(
             r"^(#{1,6}[ \t]+)\[([^\]]+)\]\([^)]*\)([ \t]*\{[^}]*\})*",
             r"\1\2",
@@ -126,20 +132,67 @@ class EpubConverter:
             flags=re.MULTILINE,
         )
 
-        # 4. Inline attribute spans  {.class #id key="val"}
-        text = re.sub(r"\{[^}\n]{0,200}\}", "", text)
+        # 4a. Span elements  [text]{attrs}  →  text
+        #     Handles multi-line content (centered blocks, small-caps, etc.).
+        #     Must run BEFORE the generic {attrs} catch-all (step 5).
+        text = re.sub(r"\[([^\]]+)\]\{[^}\n]{0,200}\}", r"\1", text)
 
-        # 5. Empty anchor spans from EPUB page anchors:  []{#page5}  →  remove
+        # 4b. Empty anchor spans  []{#id}  →  (remove)
+        #     Must run before step 5 so the full []{} token is consumed.
         text = re.sub(r"\[\]\{[^}]*\}", "", text)
 
-        # 6. Page number markers  \[pg!5\]  \[pg 5\]  \[Pg.5\]  →  [p. 5]
+        # 4c. Internal anchor links  [text](#anchor)  →  text
+        text = re.sub(r"\[([^\]\n]+)\]\(#[^)]*\)", r"\1", text)
+
+        # 4d. Footnote ref links in superscript  ^[[N]](url)^  →  [^N]
+        #     <sup><a href="#noteN">[N]</a></sup>  is the typical EPUB pattern.
+        text = re.sub(r"\^\[\[(\d+)\]\]\([^)]*\)\^", r"[^\1]", text)
+
+        # 4e. Remaining footnote ref links  [[N]](url)  →  [^N]
+        #     Handles refs not wrapped in superscript.
+        text = re.sub(r"\[\[(\d+)\]\]\([^)]*\)", r"[^\1]", text)
+
+        # 4f. Superscript wrapper left around a footnote marker  ^[^N]^  →  [^N]
+        #     Arises when step 4e ran but the outer ^…^ was not yet stripped.
+        text = re.sub(r"\^\[\^(\d+)\]\^", r"[^\1]", text)
+
+        # 4g. Bare number in superscript  ^N^  →  [^N]
+        #     <sup>N</sup> without a link: treat as footnote reference.
+        text = re.sub(r"\^(\d+)\^", r"[^\1]", text)
+
+        # 4h. Cross-file EPUB links  [text](relative/path)  →  text
+        #     Strips TOC / navigation / back-links; preserves https:// and mailto:.
+        text = re.sub(
+            r"\[([^\]\n]+)\]\((?!https?://|mailto:)[^)]+\)",
+            r"\1",
+            text,
+        )
+
+        # 4i. Residual [[N]] without URL  →  [^N]
+        text = re.sub(r"\[\[(\d+)\]\]", r"[^\1]", text)
+
+        # 4j. Bare empty brackets []
+        text = re.sub(r"\[\]", "", text)
+
+        # 4k. Line blocks  | text  →  text  (pandoc verse/line-block extension)
+        #     Only strips lines whose sole | is the leading one (table rows
+        #     contain multiple | and are left untouched).
+        text = re.sub(r"^\| ([^|\n]+)$", r"\1", text, flags=re.MULTILINE)
+
+        # 5. Generic inline attribute spans  {attrs}  (catch-all)
+        text = re.sub(r"\{[^}\n]{0,200}\}", "", text)
+
+        # 6. Leftover HTML tags  <div>, </span>, <br/>, etc.
+        text = re.sub(r"<[^>\n]{0,200}>", "", text)
+
+        # 7. Page number markers  \[pg!5\]  \[pg 5\]  \[Pg.5\]  →  [p. 5]
         text = re.sub(
             r"\\\[[Pp]g[!.\s]?(\d+)\\\]",
             r"[p. \1]",
             text,
         )
 
-        # 7. Images → numbered Markdown image syntax
+        # 8. Images → numbered Markdown image syntax
         #    ![alt](any/path.ext)  →  ![image_N](images/image_N.png)
         #    Counter is local to this section (resets each call).
         _img_counter = [0]
@@ -151,12 +204,10 @@ class EpubConverter:
 
         text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", _img, text)
 
-        # 8. Unescape common pandoc backslash noise
-        #    Handles \[ → [  and  \] → ]  which restores footnote markers,
-        #    page markers already converted above, and other escaped punctuation.
+        # 9. Unescape pandoc backslash noise  \[ → [  \] → ]  etc.
         text = re.sub(r"\\([!\"#$%&'()*+,\-./:;<=>?@\[\\\]^_{|}~`])", r"\1", text)
 
-        # 9. Collapse 3+ consecutive blank lines to 2
+        # 10. Collapse 3+ consecutive blank lines to 2
         text = re.sub(r"\n{3,}", "\n\n", text)
 
         return text.strip() + "\n"
