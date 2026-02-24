@@ -65,12 +65,11 @@ class BenchmarkBuilder:
             print(f"    ✗ No sections found, skipping")
             return None
 
-        # Save full-book Markdown as concatenation (for reference)
-        if not md_path.exists():
-            md_path.write_text(
-                "\n\n---\n\n".join(s["md"] for s in sections),
-                encoding="utf-8",
-            )
+        # Save full-book Markdown as concatenation of cleaned sections (for reference)
+        md_path.write_text(
+            "\n\n---\n\n".join(s["md"] for s in sections),
+            encoding="utf-8",
+        )
 
         # 3. Filter and sample sections
         chunks = self.sampler.split(sections)

@@ -12,7 +12,7 @@ LANGUAGES: dict[str, str] = {
     "german":  "de",
 }
 
-N_BOOKS           = 15
+N_BOOKS           = 1
 N_PAGES           = 20
 N_FRONT_MANDATORY = 3   # first N chunks always included (frontmatter)
 STRATA            = {"front": 2, "body": 10, "back": 5}  # sampled after mandatory

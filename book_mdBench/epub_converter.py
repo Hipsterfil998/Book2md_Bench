@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path, PurePosixPath
 
+from bs4 import BeautifulSoup
 import pypandoc
 
 
@@ -79,6 +80,7 @@ class EpubConverter:
           pipe_tables      – HTML tables → Markdown pipe tables
         Lists, indentation and heading hierarchy are preserved by default.
         """
+        html = self._promote_headings(html)
         try:
             md = pypandoc.convert_text(
                 html,
@@ -89,6 +91,43 @@ class EpubConverter:
         except Exception:
             return ""
         return self._clean(md)
+
+    # CSS class patterns → heading level (checked in order, first match wins).
+    # Covers common Project Gutenberg class naming conventions for IT and DE.
+    _HEADING_RULES: list[tuple[re.Pattern, int]] = [
+        # Book / part title
+        (re.compile(r"title|book.?head|tit(o(lo)?)?|titel", re.I), 1),
+        # Chapter heading  (chap covers chaphead, pgchap, etc.)
+        (re.compile(r"h1|chap|chapter|parte|part[^i]|capit|kapitel", re.I), 2),
+        # Section heading
+        (re.compile(r"h2|section|sezione|subchap|abschnitt|überschrift", re.I), 3),
+        # Sub-section / paragraph heading
+        (re.compile(r"h3|subsect|paragraph|paragrafo|absatz|unterab", re.I), 4),
+        # Lower levels
+        (re.compile(r"h[45]", re.I), 5),
+    ]
+
+    def _promote_headings(self, html: str) -> str:
+        """Promote CSS-styled heading paragraphs to semantic <h1>–<h6> tags.
+
+        Many old EPUB books (especially Project Gutenberg) use <p class="...">
+        with visual CSS instead of semantic <h1>–<h6> elements.  Pandoc only
+        converts semantic heading tags to # markers, so we normalise first.
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        for tag in soup.find_all(["p", "div", "span"]):
+            classes = " ".join(tag.get("class") or [])
+            if not classes:
+                continue
+            for pattern, level in self._HEADING_RULES:
+                if pattern.search(classes):
+                    # Only promote if the element is short (≤ 20 words) —
+                    # long <p class="title"> blocks are likely not headings.
+                    words = len(tag.get_text().split())
+                    if words <= 20:
+                        tag.name = f"h{level}"
+                    break
+        return str(soup)
 
     # ── cleaning ──────────────────────────────────────────────────────────────
 
@@ -112,7 +151,7 @@ class EpubConverter:
           - Superscript non-numerico ^text^ (extended MD standard)
           - Subscript ~text~ (extended MD standard)
           - Pipe tables, math ($…$, $$…$$), code blocks, blockquotes
-          - Lists, hard line breaks (trailing \)
+          - Lists, hard line breaks (trailing backslash)
           - Images → ![image_N](images/image_N.png)  (numbered sequentially)
           - Page markers → [p. N]
           - Footnote markers [^N] and definitions [^N]: …
