@@ -5,3 +5,5 @@ Pillow
 beautifulsoup4
 rapidfuzz
 sacrebleu
+mistune
+bert-score

@@ -4,18 +4,9 @@ BLEU score — word n-gram precision via sacrebleu.
 Range [0, 100]: 0 = no overlap, 100 = perfect match.
 """
 
-import re
-import unicodedata
-
 from sacrebleu.metrics import BLEU as _SacreBLEU
 
-
-def _normalise(text: str) -> str:
-    text = unicodedata.normalize("NFC", text)
-    text = re.sub(r"\r\n|\r", "\n", text)
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
+from ._utils import normalise
 
 
 class BLEU:
@@ -27,8 +18,8 @@ class BLEU:
     higher_is_better = True
 
     def score(self, reference: str, hypothesis: str) -> float:
-        ref = _normalise(reference)
-        hyp = _normalise(hypothesis)
+        ref = normalise(reference)
+        hyp = normalise(hypothesis)
         return _SacreBLEU(tokenize="13a", effective_order=True) \
                    .sentence_score(hyp, [ref]).score
 

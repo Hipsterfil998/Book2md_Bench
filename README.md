@@ -70,15 +70,40 @@ On Google Colab:
 pip install -r requirements.txt
 ```
 
+> **Note:** `predict.py` additionally requires [vLLM](https://docs.vllm.ai/en/latest/getting_started/installation.html) and a CUDA-capable GPU:
+> ```bash
+> pip install vllm
+> ```
+
 ## Usage
 
 ### Build the dataset
 
 ```bash
-python main.py
+python BenchmarkBuilder.py
 ```
 
 Output will be saved to `./dataset/`.
+
+### Generate predictions
+
+In a Colab notebook:
+
+```python
+from predict import PageImagePredictor
+from pathlib import Path
+
+PRED_DIR = Path("predictions")
+
+for MODEL in [
+    "Qwen/Qwen2.5-VL-7B-Instruct",
+    "mistralai/Pixtral-12B-2409",
+]:
+    p = PageImagePredictor(model_id=MODEL)
+    p.predict_dataset(Path("dataset"), PRED_DIR / p.model_slug)
+```
+
+Each model's predictions are saved under `predictions/<model-slug>/` so runs never overwrite each other.
 
 ### Evaluate predictions
 
@@ -92,28 +117,49 @@ Batch (all `.md` files in a directory):
 
 ```bash
 python eval.py --ref-dir dataset/italian/book_123/pages \
-               --pred-dir predictions/italian/book_123
+               --pred-dir predictions/Qwen2.5-VL-7B-Instruct/italian/book_123
 ```
 
-Metrics computed: **NED** (Normalised Edit Distance, lower is better) and **BLEU** (higher is better).
+Add `--bert` to also compute BERTScore (downloads ~1 GB model on first run):
+
+```bash
+python eval.py --ref-dir ... --pred-dir ... --bert
+```
+
+## Metrics
+
+| Metric | Range | Better |
+|---|---|---|
+| NED (Normalised Edit Distance) | [0, 1] | lower |
+| BLEU | [0, 100] | higher |
+| Structure F1 | [0, 1] | higher |
+| BERTScore (opt-in) | [0, 1] | higher |
+
+**Structure F1** measures precision/recall over structural Markdown elements extracted via the mistune AST parser (headings, tables, images, list items) and regex (math blocks, inline math, page numbers `[p. N]`, footnotes `[^N]`).
+
+**BERTScore** uses `xlm-roberta-base` for multilingual semantic similarity.
 
 ## Project Structure
 
 ```
 book_mdBench/
-├── main.py                # Entry point — builds the dataset
-├── eval.py                # Evaluation script (NED + BLEU)
+├── BenchmarkBuilder.py    # Entry point — builds the dataset
+├── eval.py                # Evaluation script
+├── predict.py             # Prediction script (VLM via vLLM)
 ├── config.py              # Global parameters
 │
-├── book2md/               # Core pipeline package
+├── book2md/               # Dataset construction pipeline
 │   ├── gutenberg_client.py  # Project Gutenberg search + EPUB download
 │   ├── epub_converter.py    # EPUB spine parsing + HTML → Markdown
 │   ├── page_sampler.py      # Chunk splitting + stratified sampling
 │   └── page_renderer.py     # Markdown → PDF (xelatex) → JPEG
 │
 └── metrics/               # Evaluation metrics
+    ├── _utils.py            # Shared text normalisation
     ├── ned.py               # Normalised Edit Distance
-    └── bleu.py              # BLEU score (sacrebleu)
+    ├── bleu.py              # BLEU score (sacrebleu)
+    ├── md_structure.py      # Markdown Structure F1 (mistune)
+    └── bertscore.py         # BERTScore (xlm-roberta-base)
 ```
 
 ## Output Structure
