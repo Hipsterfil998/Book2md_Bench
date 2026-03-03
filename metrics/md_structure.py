@@ -2,18 +2,24 @@
 Markdown Structure F1 — precision / recall on structural Markdown elements.
 
 Extracted element types
-  headings    : (level, normalised text)
-  tables      : normalised cell text (position-agnostic)
-  math_block  : normalised $$…$$ content
-  math_inline : normalised $…$ content
-  page_nums   : digit string from [p. N]
-  footnotes   : key string from [^key] reference markers
-  images      : normalised alt text
-  list_items  : normalised list-item text
+  headings      : (level, normalised text)
+  tables        : normalised cell text (position-agnostic)
+  math_block    : normalised $$…$$ content
+  math_inline   : normalised $…$ content
+  page_nums     : digit string from [p. N]
+  footnotes     : key string from [^key] reference markers
+  footnote_defs : normalised text from [^key]: … definitions
+  images        : normalised alt text
+  list_items    : normalised list-item text
+  bold          : normalised **…** content
+  italic        : normalised *…* content
+  bold_italic   : normalised ***…*** content
+  blockquotes   : normalised > … content
 
-Standard elements (headings, tables, images, list items) are extracted via
-the mistune AST parser.  Domain-specific elements (math, page numbers,
-footnotes) are extracted with targeted regular expressions.
+Standard elements (headings, tables, images, list items, blockquotes) are
+extracted via the mistune AST parser.  Inline emphasis and domain-specific
+elements (math, page numbers, footnotes) are extracted with targeted regular
+expressions.
 
 Per-type F1 is computed over multisets (Counter) of extracted tokens.
 Overall score = macro-average F1 across element types present in the reference.
@@ -95,8 +101,12 @@ def _walk(nodes: list, elements: dict) -> None:
                     )
                     elements["tables"][cell_text] += 1
 
-        # recurse into children (table handled above to avoid double-counting)
-        if t != "table":
+        elif t == "block_quote":
+            text = _normalise(_text_from_nodes(node.get("children", [])))
+            elements["blockquotes"][text] += 1
+
+        # recurse into children (table and block_quote handled above to avoid double-counting)
+        if t not in ("table", "block_quote"):
             children = node.get("children")
             if isinstance(children, list):
                 _walk(children, elements)
@@ -110,6 +120,10 @@ _RE_MATH_BLOCK   = re.compile(r'\$\$(.*?)\$\$', re.DOTALL)
 _RE_MATH_INLINE  = re.compile(r'\$([^\$\n]+?)\$')
 _RE_PAGE_NUM     = re.compile(r'\[p\.\s*(\d+)\]')
 _RE_FOOTNOTE_REF = re.compile(r'\[\^(\w+)\](?!:)')   # markers only, not definitions
+_RE_FOOTNOTE_DEF = re.compile(r'^\[\^(\w+)\]:\s*(.+)', re.MULTILINE)
+_RE_BOLD_ITALIC  = re.compile(r'\*{3}(.+?)\*{3}', re.DOTALL)
+_RE_BOLD         = re.compile(r'\*{2}(.+?)\*{2}', re.DOTALL)
+_RE_ITALIC       = re.compile(r'\*([^*\n]+)\*')
 
 
 def _extract_regex(text: str, elements: dict) -> None:
@@ -127,6 +141,21 @@ def _extract_regex(text: str, elements: dict) -> None:
     for m in _RE_FOOTNOTE_REF.finditer(text):
         elements["footnotes"][m.group(1)] += 1
 
+    for m in _RE_FOOTNOTE_DEF.finditer(text):
+        elements["footnote_defs"][_normalise(m.group(2))] += 1
+
+    # inline emphasis: process bold+italic first, then strip and repeat
+    for m in _RE_BOLD_ITALIC.finditer(text):
+        elements["bold_italic"][_normalise(m.group(1))] += 1
+    text_no_bi = _RE_BOLD_ITALIC.sub(" ", text)
+
+    for m in _RE_BOLD.finditer(text_no_bi):
+        elements["bold"][_normalise(m.group(1))] += 1
+    text_no_bold = _RE_BOLD.sub(" ", text_no_bi)
+
+    for m in _RE_ITALIC.finditer(text_no_bold):
+        elements["italic"][_normalise(m.group(1))] += 1
+
 
 # ---------------------------------------------------------------------------
 # Main extraction entry point
@@ -139,8 +168,13 @@ _ELEMENT_TYPES = (
     "math_inline",
     "page_nums",
     "footnotes",
+    "footnote_defs",
     "images",
     "list_items",
+    "bold",
+    "italic",
+    "bold_italic",
+    "blockquotes",
 )
 
 _ast_parser = mistune.create_markdown(renderer="ast")

@@ -28,13 +28,16 @@ Each `.md` file preserves:
 
 | Element | Format |
 |---|---|
-| Heading hierarchy | `#` `##` `###` |
-| Tables | Markdown pipe tables |
+| Heading hierarchy | `#` `##` `###` `####` |
+| Bold / Italic / Bold+italic | `**text**` / `*text*` / `***text***` |
+| Tables | GFM pipe tables with `---` separator row |
 | Math | `$...$` inline, `$$...$$` block |
-| Lists and indentation | unchanged |
-| Images | `![image_N](images/image_N.png)` |
+| Unordered / Ordered lists | `- item` / `1. item` |
+| Images | `![alt](images/filename.ext)` |
 | Book page numbers | `[p. N]` |
-| Footnotes | `[^N]` markers and definitions |
+| Footnote markers | `[^N]` inline references |
+| Footnote definitions | `[^N]: text` |
+| Blockquotes | `> text` |
 
 ## Dataset Parameters
 
@@ -135,7 +138,7 @@ python eval.py --ref-dir ... --pred-dir ... --bert
 | Structure F1 | [0, 1] | higher |
 | BERTScore (opt-in) | [0, 1] | higher |
 
-**Structure F1** measures precision/recall over structural Markdown elements extracted via the mistune AST parser (headings, tables, images, list items) and regex (math blocks, inline math, page numbers `[p. N]`, footnotes `[^N]`).
+**Structure F1** measures precision/recall over 13 structural Markdown element types. AST-extracted (via mistune): headings, tables, images, list items, blockquotes. Regex-extracted: block math `$$...$$`, inline math `$...$`, page numbers `[p. N]`, footnote markers `[^N]`, footnote definitions `[^N]: ...`, bold `**...**`, italic `*...*`, bold+italic `***...***`. The overall score is a macro-average F1 across element types present in the reference.
 
 **BERTScore** uses `xlm-roberta-base` for multilingual semantic similarity.
 
